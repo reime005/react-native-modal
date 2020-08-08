@@ -14,7 +14,6 @@ import {
   TouchableWithoutFeedback,
   View,
   ViewStyle,
-  ViewProps,
 } from 'react-native';
 import * as PropTypes from 'prop-types';
 import * as animatable from 'react-native-animatable';
@@ -91,7 +90,7 @@ export interface ModalProps extends ViewProps {
   onBackButtonPress: () => void;
   onBackdropPress: () => void;
   swipeThreshold: number;
-  scrollTo: OrNull<(e: any) => void>;
+  scrollTo: OrNull<(e: any, notPropagaged: boolean) => void>;
   scrollOffset: number;
   scrollOffsetMax: number;
   scrollHorizontal: boolean;
@@ -331,6 +330,10 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
             /scrollview|flatlist/i.test(instance.type),
           );
 
+        if (this.props.onSwipeStart) {
+          this.props.onSwipeStart();
+        }
+
         if (
           hasScrollableView &&
           this.props.propagateSwipe &&
@@ -339,9 +342,6 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
         ) {
           return false; // user needs to be able to scroll content back up
         }
-        if (this.props.onSwipeStart) {
-          this.props.onSwipeStart();
-        }
 
         // Cleared so that onPanResponderMove can wait to have some delta
         // to work with
@@ -349,6 +349,32 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
         return true;
       },
       onPanResponderMove: (evt, gestureState) => {
+        const handleScroll = (propagated = false) => {
+          if (this.props.scrollTo) {
+            if (this.props.scrollHorizontal) {
+              let offsetX = -gestureState.dx;
+              if (offsetX > this.props.scrollOffsetMax) {
+                offsetX -= (offsetX - this.props.scrollOffsetMax) / 2;
+              }
+
+              this.props.scrollTo({x: offsetX * 2, animated: false}, propagated);
+            } else {
+              let offsetY = -gestureState.dy;
+              if (offsetY > this.props.scrollOffsetMax) {
+                offsetY -= (offsetY - this.props.scrollOffsetMax) / 2;
+              }
+
+              //HACK: 2 is arbitrary
+              this.props.scrollTo({y: offsetY * 2, animated: false}, propagated);
+            }
+          }
+        }
+
+        // handle initial scroll, when not knowing the exact scroll direction
+        if (this.props.propagateSwipe && ((gestureState.dy < 0 && !this.props.scrollHorizontal) || (gestureState.dx < 0 && this.props.scrollHorizontal))) {
+          handleScroll(true);
+        }
+
         // Using onStartShouldSetPanResponder we don't have any delta so we don't know
         // The direction to which the user is swiping until some move have been done
         if (!this.currentSwipingDirection) {
@@ -376,23 +402,7 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
             this.props.onSwipeMove(newOpacityFactor);
           }
         } else {
-          if (this.props.scrollTo) {
-            if (this.props.scrollHorizontal) {
-              let offsetX = -gestureState.dx;
-              if (offsetX > this.props.scrollOffsetMax) {
-                offsetX -= (offsetX - this.props.scrollOffsetMax) / 2;
-              }
-
-              this.props.scrollTo({x: offsetX, animated: false});
-            } else {
-              let offsetY = -gestureState.dy;
-              if (offsetY > this.props.scrollOffsetMax) {
-                offsetY -= (offsetY - this.props.scrollOffsetMax) / 2;
-              }
-
-              this.props.scrollTo({y: offsetY, animated: false});
-            }
-          }
+          handleScroll(false);
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
