@@ -357,15 +357,14 @@ export class ReactNativeModal extends React.Component<ModalProps, State> {
                 offsetX -= (offsetX - this.props.scrollOffsetMax) / 2;
               }
 
-              this.props.scrollTo({x: offsetX * 2, animated: false}, propagated);
+              this.props.scrollTo({x: offsetX, animated: false}, propagated);
             } else {
               let offsetY = -gestureState.dy;
               if (offsetY > this.props.scrollOffsetMax) {
                 offsetY -= (offsetY - this.props.scrollOffsetMax) / 2;
               }
 
-              //HACK: 2 is arbitrary
-              this.props.scrollTo({y: offsetY * 2, animated: false}, propagated);
+              this.props.scrollTo({y: offsetY, animated: false}, propagated);
             }
           }
         }
